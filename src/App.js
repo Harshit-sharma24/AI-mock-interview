@@ -9,89 +9,134 @@ const client = new Groq({
 
 function App() {
   const [topic, setTopic] = useState("");
-  const [num, setNum] = useState(5);
+  const [num, setNum] = useState("");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const generate = async () => {
-    if (!topic || !num) {
-      alert("Please enter topic and number");
+    if (!topic || !num || num <= 0) {
+      alert("Please enter valid topic and number");
       return;
     }
 
     setLoading(true);
     setData([]);
 
-    const prompt = `
-Generate ${num} interview questions with answers for ${topic}.
+    let allData = [];
 
-Format strictly like:
-Q1: question
-A1: answer
+    for (let i = 0; i < num; i += 10) {
+      const chunkSize = Math.min(10, num - i);
 
-Do not use markdown or ** symbols.
+      const prompt = `
+Give exactly ${chunkSize} interview questions with answers on ${topic}.
+
+Strict format:
+Q1: ...
+A1: ...
+Q2: ...
+A2: ...
+
+Rules:
+- Exactly ${chunkSize} questions
+- हर question ka answer hona chahiye
+- Extra kuch mat dena
 `;
 
-    const response = await client.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }]
-    });
+      try {
+        const response = await client.chat.completions.create({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }]
+        });
 
-    const text = response.choices[0].message.content;
+        const text = response.choices[0].message.content;
 
-    const blocks = text.split(/Q\d+:/).filter(Boolean);
+        // ✅ Strong regex parsing
+        const matches = text.match(/Q\d+:\s*(.*?)\s*A\d+:\s*(.*?)(?=Q\d+:|$)/gs);
 
-    const parsed = blocks.map((block) => {
-      const parts = block.split(/A\d+:/);
-      return {
-        question: parts[0]?.trim(),
-        answer: parts[1]?.trim()
-      };
-    });
+        if (matches) {
+          matches.forEach((pair) => {
+            const qMatch = pair.match(/Q\d+:\s*(.*)/);
+            const aMatch = pair.match(/A\d+:\s*(.*)/);
 
-    setData(parsed);
+            allData.push({
+              question: qMatch?.[1]?.trim() || "Missing question",
+              answer: aMatch?.[1]?.trim() || "Missing answer"
+            });
+          });
+        }
+
+      } catch (err) {
+        console.error("API Error:", err);
+      }
+    }
+
+    setData(allData.slice(0, num));
     setLoading(false);
   };
 
   return (
-    <div className="app">
+    <div className="container">
+      <h1>🤖 AI Mock Interviewer</h1>
+      <p className="subtitle">Practice smarter, crack interviews faster 🚀</p>
+
       <div className="card">
-        <h1>🤖 AI Mock Interviewer</h1>
-        <p className="subtitle">Practice real interview questions instantly</p>
 
-        <input
-          type="text"
-          placeholder="Enter topic (React, Java...)"
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        />
+        <div className="form-group">
+          <label>Topic</label>
+          <input
+            type="text"
+            placeholder="React, Java, DSA..."
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+          />
+        </div>
 
-        <input
-          type="number"
-          value={num}
-          onChange={(e) => setNum(e.target.value)}
-        />
+        <div className="form-group">
+          <label>Number of Questions</label>
+         <input
+  type="number"
+  placeholder="Enter number (e.g. 5, 10, 50)"
+  value={num}
+  onChange={(e) => setNum(e.target.value)}
+/>
+        </div>
 
-        <button onClick={generate}>
+        <button onClick={generate} disabled={loading}>
           {loading ? "Generating..." : "Generate Questions"}
         </button>
 
-        <div className="output">
-          {data.map((item, index) => (
-            <div key={index} className="qa-card">
-             <div className="question">
-    Q{index + 1}: {item.question}
-  </div>
+        {/* 🔥 Loader UI */}
+        {loading && (
+          <div className="loader-box">
+            <div className="spinner"></div>
+            <p>Generating questions... please wait ⏳</p>
+          </div>
+        )}
 
-  <div className="answer">
-    A{index + 1}: {item.answer}
-  </div>
-            </div>
-          ))}
-        </div>
       </div>
+
+      {/* 🔥 Output */}
+      <div className="output">
+        {data.length > 0 && !loading && (
+          <h2 className="result-title">Generated Questions</h2>
+        )}
+
+        {data.map((item, index) => (
+          <div key={index} className="qa-card">
+            <div className="question">
+              Q{index + 1}: {item.question}
+            </div>
+
+            <div className="answer">
+              A{index + 1}: {item.answer}
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
+
 
 export default App;
