@@ -6,7 +6,7 @@ A modern AI-powered web app that generates interview questions and answers based
 
 ## 🌐 Live Demo
 
-👉 https://your-site-name.netlify.app
+👉 https://ai-mock-intervieww.netlify.app/
 
 ---
 
